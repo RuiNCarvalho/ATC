@@ -12,15 +12,14 @@ class Pacman;
 class Board;
 
 
-// Position structure to represent board coordinates
 struct Position {
     int x, y;
 
     Position(int x, int y);
-    double distanceTo(const Position& other) const;  // Calculates distance to another position
+    double distanceTo(const Position& other) const;  
 };
 
-// Base class for chase strategies
+
 class ChaseStrategy {
 protected:
     Board* gameBoard;
@@ -29,7 +28,7 @@ public:
     ChaseStrategy(Board* board);
     virtual ~ChaseStrategy() = default;
 
-    // Pure virtual method - all strategies must implement
+    
     virtual Position calculateNextPosition(
         const Ghost* ghost,
         const Pacman* pacman,
@@ -37,7 +36,7 @@ public:
     ) = 0;
 
 protected:
-    bool isValidPosition(int x, int y);  // Checks if position is valid on board
+    bool isValidPosition(int x, int y); 
 };
 
 // Different chase strategy implementations

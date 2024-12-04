@@ -1,152 +1,312 @@
+Ôªø// game_menu.h
+#ifndef GAME_MENU_H
+#define GAME_MENU_H
+
+#include <string>
+#include <vector>
+#include <functional>
+#include <curses.h>
+#include "game_object.h"
+
+// Define as dire√ß√µes poss√≠veis no menu
+enum class MenuNavigation {
+    UP,     // Seta para cima
+    DOWN,   // Seta para baixo
+    ENTER,  // Tecla Enter
+    ESCAPE  // Tecla Esc
+};
+
+// Estrutura para representar cada op√ß√£o do menu
+struct MenuItem {
+    std::string label;           // Texto da op√ß√£o
+    std::string description;     // Descri√ß√£o/explica√ß√£o da op√ß√£o
+    std::function<void()> action;// Fun√ß√£o a ser executada
+    bool isEnabled;              // Se a op√ß√£o est√° habilitada
+
+    MenuItem(const std::string& lbl, const std::string& desc,
+        std::function<void()> act, bool enabled = true)
+        : label(lbl), description(desc), action(act), isEnabled(enabled) {}
+};
+
+class GameMenu {
+private:
+    std::string title;                    // T√≠tulo do menu
+    std::vector<MenuItem> menuItems;      // Lista de op√ß√µes do menu
+    int selectedOption;                   // √çndice da op√ß√£o selecionada
+    bool isActive;                        // Se o menu est√° ativo
+    bool showHelp;                        // Se mostra descri√ß√µes das op√ß√µes
+
+    // Dimens√µes e posi√ß√£o do menu
+    int startX;
+    int startY;
+    int width;
+    int height;
+
+public:
+    // Construtor: inicializa o menu
+    GameMenu(const std::string& menuTitle);
+
+    // Adiciona uma nova op√ß√£o ao menu
+    void addMenuItem(const std::string& label,
+        const std::string& description,
+        std::function<void()> action,
+        bool enabled = true);
+
+    // Fun√ß√µes principais do menu
+    void display();                           // Mostra o menu na tela
+    void handleInput(int key);                // Processa entrada do usu√°rio
+    void selectCurrentOption();               // Executa op√ß√£o selecionada
+
+    // Menus espec√≠ficos
+    void showMainMenu();                      // Menu principal
+    void showPauseMenu();                     // Menu de pausa
+    void showConfigMenu();                    // Menu de configura√ß√µes
+    void showControlsMenu();                  // Menu de controles
+    void showConfirmExit();                   // Confirma√ß√£o de sa√≠da
+
+private:
+    // Fun√ß√µes auxiliares de desenho
+    void drawFrame();                         // Desenha borda do menu
+    void drawTitle();                         // Desenha t√≠tulo
+    void drawOptions();                       // Desenha op√ß√µes
+    void drawDescription();                   // Desenha descri√ß√£o da op√ß√£o atual
+    void drawControls();                      // Desenha teclas de controle
+    void clearMenuArea();                     // Limpa √°rea do menu
+
+    // Fun√ß√µes de navega√ß√£o
+    void moveSelection(MenuNavigation dir);   // Move sele√ß√£o
+    void updateSelection();                   // Atualiza op√ß√£o selecionada
+};
+
+#endif
+
+// game_menu.cpp
 #include "game_menu.h"
-#include <cmath>
 
-// ---- ImplementaÁ„o da classe Button (Bot„o) ----
-
-// Construtor do bot„o: inicializa um novo bot„o com posiÁ„o e texto
-Button::Button(int x, int y, const std::string& buttonLabel)
-    : GameObject(x, y, 100, 30, 0),  // Cria um GameObject com largura=100, altura=30, velocidade=0
-    label(buttonLabel),            // Define o texto do bot„o
-    isSelected(false) {            // ComeÁa n„o selecionado
-}
-
-// Botıes n„o se movem, ent„o deixamos vazio
-void Button::move() {
-    // N„o faz nada
-}
-
-// O desenho ser· feito na classe PacmanUI
-void Button::draw() {
-    // ImplementaÁ„o ser· feita em outro lugar
-}
-
-// Verifica se um clique do mouse (posiÁ„o x,y) est· dentro do bot„o
-bool Button::isClicked(int mouseX, int mouseY) {
-    return mouseX >= getX() && mouseX <= getX() + getWidth() &&
-        mouseY >= getY() && mouseY <= getY() + getHeight();
-}
-
-// Define se o bot„o est· selecionado ou n„o
-void Button::setSelected(bool selected) {
-    isSelected = selected;
-}
-
-// Retorna se o bot„o est· selecionado
-bool Button::getSelected() const {
-    return isSelected;
-}
-
-// Retorna o texto do bot„o
-std::string Button::getLabel() const {
-    return label;
-}
-
-// ---- ImplementaÁ„o da classe MenuOption (OpÁ„o do Menu) ----
-
-// Construtor: cria uma nova opÁ„o de menu
-MenuOption::MenuOption(int x, int y, const std::string& label, std::function<void()> actionFunc)
-    : Button(x, y, label),    // Cria o bot„o com posiÁ„o e texto
-    action(actionFunc) {     // Guarda a funÁ„o que ser· executada quando selecionado
-}
-
-// Executa a aÁ„o associada a esta opÁ„o do menu
-void MenuOption::executeAction() {
-    if (action) {  // Se tiver uma aÁ„o definida
-        action();  // Executa a aÁ„o
-    }
-}
-
-// ---- ImplementaÁ„o da classe GameMenu (Menu do Jogo) ----
-
-// Construtor: cria um novo menu
 GameMenu::GameMenu(const std::string& menuTitle)
-    : title(menuTitle),      // Define o tÌtulo
-    selectedOption(0),     // Primeira opÁ„o comeÁa selecionada
-    isActive(false) {      // Menu comeÁa inativo
+    : title(menuTitle),
+    selectedOption(0),
+    isActive(false),
+    showHelp(true),
+    startX(5),
+    startY(3),
+    width(70),
+    height(20)
+{
+    // Configura menu principal
+    showMainMenu();
 }
 
-// Destrutor: limpa a memÛria quando o menu È destruÌdo
-GameMenu::~GameMenu() {
-    // Deleta todas as opÁıes do menu
-    for (auto* option : options) {
-        delete option;
+void GameMenu::showMainMenu() {
+    menuItems.clear();
+    addMenuItem("Novo Jogo", "Inicia uma nova partida do Pac-Man",
+        []() { /* L√≥gica de novo jogo */ });
+
+    addMenuItem("Continuar", "Retorna ao jogo em andamento",
+        []() { /* L√≥gica de continuar */ });
+
+    addMenuItem("Controles", "Mostra os controles do jogo",
+        [this]() { showControlsMenu(); });
+
+    addMenuItem("Configura√ß√µes", "Ajusta configura√ß√µes do jogo",
+        [this]() { showConfigMenu(); });
+
+    addMenuItem("Pontua√ß√µes", "Mostra as melhores pontua√ß√µes",
+        []() { /* L√≥gica de pontua√ß√µes */ });
+
+    addMenuItem("Sair", "Sair do jogo (salva progresso)",
+        [this]() { showConfirmExit(); });
+}
+
+void GameMenu::showPauseMenu() {
+    menuItems.clear();
+    addMenuItem("Continuar", "Retorna ao jogo",
+        []() { /* L√≥gica de continuar */ });
+
+    addMenuItem("Reiniciar N√≠vel", "Recome√ßa o n√≠vel atual",
+        []() { /* L√≥gica de reiniciar */ });
+
+    addMenuItem("Configura√ß√µes", "Ajusta configura√ß√µes do jogo",
+        [this]() { showConfigMenu(); });
+
+    addMenuItem("Menu Principal", "Volta ao menu principal",
+        [this]() { showMainMenu(); });
+}
+
+void GameMenu::showConfigMenu() {
+    menuItems.clear();
+    addMenuItem("Dificuldade", "Ajusta a dificuldade do jogo",
+        []() { /* L√≥gica de dificuldade */ });
+
+    addMenuItem("Som: Ligado", "Liga/Desliga efeitos sonoros",
+        []() { /* L√≥gica de som */ });
+
+    addMenuItem("M√∫sica: Ligada", "Liga/Desliga m√∫sica de fundo",
+        []() { /* L√≥gica de m√∫sica */ });
+
+    addMenuItem("Voltar", "Retorna ao menu anterior",
+        [this]() { showMainMenu(); });
+}
+
+void GameMenu::showControlsMenu() {
+    menuItems.clear();
+    addMenuItem("Movimento", "Setas direcionais - Move o Pac-Man",
+        nullptr, false);
+
+    addMenuItem("Pausa", "P - Pausa o jogo",
+        nullptr, false);
+
+    addMenuItem("Power Pellet", "Quando ativo, permite comer fantasmas",
+        nullptr, false);
+
+    addMenuItem("Voltar", "Retorna ao menu anterior",
+        [this]() { showMainMenu(); });
+}
+
+void GameMenu::showConfirmExit() {
+    menuItems.clear();
+    addMenuItem("Sim", "Confirma e sai do jogo",
+        []() { endwin(); exit(0); });
+
+    addMenuItem("N√£o", "Retorna ao menu anterior",
+        [this]() { showMainMenu(); });
+}
+
+void GameMenu::display() {
+    clearMenuArea();
+    drawFrame();
+    drawTitle();
+    drawOptions();
+    if (showHelp) {
+        drawDescription();
     }
-    options.clear();  // Limpa a lista
+    drawControls();
+    refresh();
 }
 
-// Adiciona uma nova opÁ„o ao menu
-void GameMenu::addOption(const std::string& label, int x, int y, std::function<void()> action) {
-    options.push_back(new MenuOption(x, y, label, action));
-    // Se for a primeira opÁ„o, seleciona ela
-    if (options.size() == 1) {
-        options[0]->setSelected(true);
+void GameMenu::drawFrame() {
+    // Desenha borda do menu
+    for (int y = startY; y < startY + height; y++) {
+        mvaddch(y, startX, ACS_VLINE);
+        mvaddch(y, startX + width, ACS_VLINE);
+    }
+
+    for (int x = startX; x < startX + width; x++) {
+        mvaddch(startY, x, ACS_HLINE);
+        mvaddch(startY + height, x, ACS_HLINE);
+    }
+
+    // Cantos
+    mvaddch(startY, startX, ACS_ULCORNER);
+    mvaddch(startY, startX + width, ACS_URCORNER);
+    mvaddch(startY + height, startX, ACS_LLCORNER);
+    mvaddch(startY + height, startX + width, ACS_LRCORNER);
+}
+
+void GameMenu::drawTitle() {
+    attron(A_BOLD | COLOR_PAIR(6));
+    mvprintw(startY + 1, startX + (width - title.length()) / 2, "%s", title.c_str());
+    attroff(A_BOLD | COLOR_PAIR(6));
+}
+
+void GameMenu::drawOptions() {
+    int y = startY + 3;
+    for (size_t i = 0; i < menuItems.size(); i++) {
+        if (i == selectedOption) {
+            attron(A_REVERSE);
+        }
+        if (!menuItems[i].isEnabled) {
+            attron(COLOR_PAIR(8)); // Cor para op√ß√µes desabilitadas
+        }
+
+        mvprintw(y, startX + 2, "%s", menuItems[i].label.c_str());
+
+        if (!menuItems[i].isEnabled) {
+            attroff(COLOR_PAIR(8));
+        }
+        if (i == selectedOption) {
+            attroff(A_REVERSE);
+        }
+        y += 2;
     }
 }
 
-// Mostra o menu
-void GameMenu::displayMenu() {
-    isActive = true;
-    updateSelectedOption();
+void GameMenu::drawDescription() {
+    if (selectedOption >= 0 && selectedOption < static_cast<int>(menuItems.size())) {
+        const auto& item = menuItems[selectedOption];
+        if (!item.description.empty()) {
+            attron(COLOR_PAIR(6));
+            mvprintw(startY + height - 3, startX + 2, "%s", item.description.c_str());
+            attroff(COLOR_PAIR(6));
+        }
+    }
 }
 
-// Controla a navegaÁ„o no menu (responde ‡s teclas)
-void GameMenu::navigateMenu(MenuNavigation direction) {
-    if (!isActive) return;  // Se o menu n„o estiver ativo, n„o faz nada
+void GameMenu::drawControls() {
+    attron(COLOR_PAIR(6));
+    mvprintw(startY + height - 1, startX + 2,
+        "‚Üë‚Üì: Selecionar   Enter: Confirmar   Esc: Voltar");
+    attroff(COLOR_PAIR(6));
+}
 
-    switch (direction) {
-    case MenuNavigation::UP:  // Se apertou para cima
-        // Move para a opÁ„o anterior (volta para o final se estiver no inÌcio)
-        selectedOption = (selectedOption - 1 + options.size()) % options.size();
+void GameMenu::handleInput(int key) {
+    switch (key) {
+    case KEY_UP:
+        moveSelection(MenuNavigation::UP);
         break;
-    case MenuNavigation::DOWN:  // Se apertou para baixo
-        // Move para a prÛxima opÁ„o (volta para o inÌcio se estiver no final)
-        selectedOption = (selectedOption + 1) % options.size();
+    case KEY_DOWN:
+        moveSelection(MenuNavigation::DOWN);
         break;
-    case MenuNavigation::ENTER:  // Se apertou Enter
-        selectOption();          // Seleciona a opÁ„o atual
+    case 10: // Enter
+        selectCurrentOption();
         break;
-    case MenuNavigation::ESCAPE:  // Se apertou Esc
-        exitMenu();               // Fecha o menu
+    case 27: // Esc
+        if (title != "Menu Principal") {
+            showMainMenu();
+        }
         break;
     }
-    updateSelectedOption();  // Atualiza qual opÁ„o est· selecionada
+    display();
 }
 
-// Seleciona a opÁ„o atual do menu
-void GameMenu::selectOption() {
-    if (isActive && selectedOption >= 0 && selectedOption < options.size()) {
-        options[selectedOption]->executeAction();  // Executa a aÁ„o da opÁ„o selecionada
+void GameMenu::moveSelection(MenuNavigation dir) {
+    switch (dir) {
+    case MenuNavigation::UP:
+        do {
+            selectedOption = (selectedOption - 1 + menuItems.size()) % menuItems.size();
+        } while (!menuItems[selectedOption].isEnabled);
+        break;
+
+    case MenuNavigation::DOWN:
+        do {
+            selectedOption = (selectedOption + 1) % menuItems.size();
+        } while (!menuItems[selectedOption].isEnabled);
+        break;
+
+    default:
+        break;
     }
 }
 
-// Fecha o menu
-void GameMenu::exitMenu() {
-    isActive = false;
-}
-
-// Atualiza qual opÁ„o est· selecionada (visual)
-void GameMenu::updateSelectedOption() {
-    for (size_t i = 0; i < options.size(); i++) {
-        options[i]->setSelected(i == selectedOption);
+void GameMenu::selectCurrentOption() {
+    if (selectedOption >= 0 && selectedOption < static_cast<int>(menuItems.size())) {
+        const auto& item = menuItems[selectedOption];
+        if (item.isEnabled && item.action) {
+            item.action();
+        }
     }
 }
 
-// Retorna se o menu est· ativo
-bool GameMenu::isMenuActive() const {
-    return isActive;
+void GameMenu::clearMenuArea() {
+    for (int y = startY; y < startY + height + 1; y++) {
+        move(y, startX);
+        clrtoeol();
+    }
 }
 
-// Retorna o tÌtulo do menu
-std::string GameMenu::getTitle() const {
-    return title;
-}
-
-// Retorna a lista de opÁıes do menu
-const std::vector<MenuOption*>& GameMenu::getOptions() const {
-    return options;
-}
-
-// Retorna qual opÁ„o est· selecionada
-int GameMenu::getSelectedIndex() const {
-    return selectedOption;
+void GameMenu::addMenuItem(const std::string& label,
+    const std::string& description,
+    std::function<void()> action,
+    bool enabled) {
+    menuItems.emplace_back(label, description, action, enabled);
 }
